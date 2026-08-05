@@ -18,7 +18,7 @@ OIDC_ENABLED="${OIDC_ENABLED:-true}"
 OIDC_CALLBACK_URL="${OIDC_CALLBACK_URL:-/oauth2/callback}"
 OIDC_LOGOUT_URL="${OIDC_LOGOUT_URL:-/oauth2/logout}"
 # Local demo runs over plain http://, so redirects must NOT be forced to https.
-OIDC_FORCE_HTTPS="${OIDC_FORCE_HTTPS:-false}"
+OIDC_FORCE_HTTPS="${OIDC_FORCE_HTTPS:-true}"
 OIDC_LOG_LEVEL="${OIDC_LOG_LEVEL:-info}"
 OIDC_SCOPES="${OIDC_SCOPES:-openid,profile,email}"
 OIDC_EXCLUDED_URLS="${OIDC_EXCLUDED_URLS:-}"
