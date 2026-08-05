@@ -1,0 +1,39 @@
+services:
+  reef-traefik-demo:
+    build: .
+    image: reef-traefik-demo-app:dev
+    container_name: reef-traefik-demo
+    ports:
+      - "8080:80"     # host 8080 -> Traefik web entrypoint (whoami via Traefik)
+      - "8081:8080"   # host 8081 -> Traefik dashboard/API
+    volumes:
+      # Static config (entrypoints, dashboard, plugin declaration). Editing it
+      # needs a restart. The dynamic config is generated in-image at startup by
+      # entrypoint.sh from the environment below, so it is NOT mounted.
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # Persists the auto-generated OIDC session key across restarts so cookies
+      # stay valid (avoids "Critical session error"). Ignored if you set
+      # OIDC_SESSION_ENCRYPTION_KEY explicitly. Wiped by `docker compose down -v`.
+      - oidc-session-key:/var/lib/traefikoidc
+    env_file: .env
+    environment:
+      # whoami internal port (kept in sync with the rendered service url).
+      WHOAMI_PORT: "8000"
+      WHOAMI_NAME: "reef-traefik-demo"
+
+      # --- OIDC auth (values from a sibling .env file; see .env.example) ------
+      OIDC_ENABLED: "${OIDC_ENABLED:-true}"
+      REEF_ISSUER: "${REEF_ISSUER:-}"
+      REEF_CLIENT_ID: "${REEF_CLIENT_ID:-}"
+      REEF_CLIENT_SECRET: "${REEF_CLIENT_SECRET:-}"
+      OIDC_CALLBACK_URL: "${OIDC_CALLBACK_URL:-/oauth2/callback}"
+      OIDC_LOGOUT_URL: "${OIDC_LOGOUT_URL:-/oauth2/logout}"
+      OIDC_FORCE_HTTPS: "${OIDC_FORCE_HTTPS:-false}"
+      OIDC_LOG_LEVEL: "${OIDC_LOG_LEVEL:-info}"
+      OIDC_SCOPES: "${OIDC_SCOPES:-openid,profile,email}"
+      OIDC_EXCLUDED_URLS: "${OIDC_EXCLUDED_URLS:-}"
+      OIDC_SESSION_ENCRYPTION_KEY: "${OIDC_SESSION_ENCRYPTION_KEY:-}"
+    restart: unless-stopped
+
+volumes:
+  oidc-session-key:

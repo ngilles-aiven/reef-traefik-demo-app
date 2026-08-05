@@ -1,0 +1,40 @@
+# Traefik STATIC configuration.
+# Changes here require a container restart (`make down && make up`).
+# For routing/middleware changes you edit at runtime, use the watched
+# dynamic config in ./dynamic/ instead (reloads live, no restart).
+
+# --- Entrypoints: where Traefik listens for incoming traffic -----------------
+entryPoints:
+  web:
+    address: ":80"
+
+# --- API & dashboard ---------------------------------------------------------
+# insecure:true serves the dashboard on the dedicated :8080 port with no auth.
+# Fine for a local demo; do NOT do this in production.
+api:
+  dashboard: true
+  insecure: true
+
+# --- Plugins -----------------------------------------------------------------
+# The OIDC auth middleware. Traefik downloads the plugin source from GitHub on
+# first startup (needs network egress). The middleware itself is configured in
+# the dynamic config, which entrypoint.sh renders from environment variables.
+experimental:
+  plugins:
+    traefikoidc:
+      moduleName: github.com/lukaszraczylo/traefikoidc
+      version: v1.0.29
+
+# --- Providers: where Traefik reads its dynamic (routing) config -------------
+# The file provider watches this directory; drop/edit files in ./dynamic/ and
+# Traefik hot-reloads them.
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+# --- Logging -----------------------------------------------------------------
+log:
+  level: INFO
+
+accessLog: {}
