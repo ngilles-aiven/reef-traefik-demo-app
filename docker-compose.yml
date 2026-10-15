@@ -33,7 +33,35 @@ services:
       OIDC_SCOPES: "${OIDC_SCOPES:-openid,profile,email}"
       OIDC_EXCLUDED_URLS: "${OIDC_EXCLUDED_URLS:-}"
       OIDC_SESSION_ENCRYPTION_KEY: "${OIDC_SESSION_ENCRYPTION_KEY:-}"
+
+      # --- Redis-backed shared sessions --------------------------------------
+      # Enabled by default here so sessions are stored in the `redis` service
+      # below (shared across replicas, survive app restarts). Set
+      # REDIS_ENABLED=false in .env to fall back to in-memory sessions.
+      REDIS_ENABLED: "${REDIS_ENABLED:-true}"
+      REDIS_ADDRESS: "${REDIS_ADDRESS:-redis:6379}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      REDIS_DB: "${REDIS_DB:-0}"
+      REDIS_CACHE_MODE: "${REDIS_CACHE_MODE:-hybrid}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: reef-traefik-demo-redis
+    # Persist session data across restarts (append-only file).
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
 volumes:
   oidc-session-key:
+  redis-data:

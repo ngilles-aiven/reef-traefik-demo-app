@@ -23,6 +23,17 @@ OIDC_LOG_LEVEL="${OIDC_LOG_LEVEL:-info}"
 OIDC_SCOPES="${OIDC_SCOPES:-openid,profile,email}"
 OIDC_EXCLUDED_URLS="${OIDC_EXCLUDED_URLS:-}"
 
+# --- Redis knobs (optional shared session/cache store) -----------------------
+# When enabled, the OIDC plugin stores session/cache state in Redis instead of
+# in-process memory, so sessions survive restarts and can be shared across
+# multiple app replicas. Left disabled, the plugin keeps state in memory.
+REDIS_ENABLED="${REDIS_ENABLED:-false}"
+REDIS_ADDRESS="${REDIS_ADDRESS:-}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+REDIS_DB="${REDIS_DB:-0}"
+# memory | redis | hybrid (hybrid = local L1 + Redis L2, recommended).
+REDIS_CACHE_MODE="${REDIS_CACHE_MODE:-hybrid}"
+
 DYNAMIC_DIR="/etc/traefik/dynamic"
 DYNAMIC_FILE="${DYNAMIC_DIR}/dynamic.yml"
 mkdir -p "${DYNAMIC_DIR}"
@@ -107,6 +118,20 @@ http:
 EOF
   if [ -n "${OIDC_EXCLUDED_URLS}" ]; then
     printf '          excludedURLs: %s\n' "$(to_yaml_list "${OIDC_EXCLUDED_URLS}")" >> "${DYNAMIC_FILE}"
+  fi
+
+  # Optionally point the plugin at Redis for shared session/cache storage.
+  if [ "${REDIS_ENABLED}" = "true" ]; then
+    : "${REDIS_ADDRESS:?REDIS_ENABLED=true but REDIS_ADDRESS is not set (host:port)}"
+    echo "entrypoint: enabling Redis-backed sessions (address=${REDIS_ADDRESS}, cacheMode=${REDIS_CACHE_MODE})." >&2
+    {
+      printf '          redis:\n'
+      printf '            enabled: true\n'
+      printf '            address: "%s"\n' "${REDIS_ADDRESS}"
+      printf '            db: %s\n' "${REDIS_DB}"
+      printf '            cacheMode: "%s"\n' "${REDIS_CACHE_MODE}"
+      [ -n "${REDIS_PASSWORD}" ] && printf '            password: "%s"\n' "${REDIS_PASSWORD}"
+    } >> "${DYNAMIC_FILE}"
   fi
 else
   echo "entrypoint: rendering dynamic config WITHOUT auth (OIDC_ENABLED=${OIDC_ENABLED})." >&2

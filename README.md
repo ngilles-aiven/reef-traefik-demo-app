@@ -81,8 +81,29 @@ Set in `.env` (see `env.example`); passed through by `docker-compose.yml`.
 | `OIDC_SCOPES` | `openid,profile,email` | Comma-separated OAuth scopes. |
 | `OIDC_EXCLUDED_URLS` | — | Comma-separated paths that bypass auth. |
 | `OIDC_SESSION_ENCRYPTION_KEY` | auto | Cookie key (≥32 bytes). Blank ⇒ generated once and persisted to the `oidc-session-key` volume so it survives restarts. |
+| `REDIS_ENABLED` | `true`¹ | Store OIDC sessions/cache in Redis (shared across replicas, survive restarts) instead of in-memory. |
+| `REDIS_ADDRESS` | `redis:6379`¹ | Redis server as `host:port`. **Required when `REDIS_ENABLED=true`.** |
+| `REDIS_PASSWORD` | — | Redis auth password (blank if none). |
+| `REDIS_DB` | `0` | Redis logical database number (0–15). |
+| `REDIS_CACHE_MODE` | `hybrid` | `memory` / `redis` / `hybrid` (hybrid = local L1 + Redis L2). |
 | `WHOAMI_PORT` | `8000` | Internal port whoami listens on. |
 | `WHOAMI_NAME` | `reef-traefik-demo` | Name whoami reports. |
+
+¹ These are the `docker-compose.yml` defaults (the bundled `redis` service).
+The `entrypoint.sh` fallback is `REDIS_ENABLED=false` — i.e. Redis is opt-in
+when you run the image without compose.
+
+### Shared sessions (Redis)
+
+By default `docker compose up` now starts a `redis` service and the OIDC plugin
+stores its session/cache state there rather than in process memory. This means
+sessions survive an app restart and can be shared across multiple app replicas
+(and it's what the plugin recommends for IdP-initiated / multi-replica logout).
+
+Redis data is persisted to the `redis-data` volume (append-only file); it's
+wiped by `docker compose down -v`. To go back to in-memory sessions set
+`REDIS_ENABLED=false` in `.env`. To point at an external Redis instead of the
+bundled one, set `REDIS_ADDRESS` (and `REDIS_PASSWORD` if needed).
 
 ### Gotchas
 
